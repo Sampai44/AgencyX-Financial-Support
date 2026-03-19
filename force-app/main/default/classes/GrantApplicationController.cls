@@ -1,4 +1,4 @@
-public with sharing class GrantApplicationController {
+public without sharing class GrantApplicationController {
     @AuraEnabled
     public static String submitApplication(Contact con) {
         try {
