@@ -1,0 +1,27 @@
+<template>
+    <lightning-card title="Financial Support Application" icon-name="standard:contact">
+        <div class="slds-p-around_medium">
+            <lightning-input label="First Name" data-id="FirstName" required></lightning-input>
+            <lightning-input label="Last Name" data-id="LastName" required></lightning-input>
+            
+            <!-- SG Phone Validation -->
+            <lightning-input label="Phone (65xxxxxxxx)" data-id="Phone" 
+                pattern="65[0-9]{8}" message-when-pattern-mismatch="Must start with 65 followed by 8 digits" required>
+            </lightning-input>
+
+            <lightning-input label="Postal Code" data-id="PostalCode" 
+                pattern="[0-9]{6}" message-when-pattern-mismatch="Must be exactly 6 digits" required>
+            </lightning-input>
+
+            <lightning-input type="number" label="Monthly Income (SGD)" data-id="Income" required></lightning-input>
+
+            <lightning-combobox label="Support Option" data-id="Option" 
+                options={options} required>
+            </lightning-combobox>
+
+            <lightning-button class="slds-m-top_medium" variant="brand" 
+                label="Submit Application" onclick={handleSubmit}>
+            </lightning-button>
+        </div>
+    </lightning-card>
+</template>
