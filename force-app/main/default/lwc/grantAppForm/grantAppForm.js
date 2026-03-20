@@ -22,7 +22,7 @@ export default class GrantAppForm extends LightningElement {
             LastName: this.template.querySelector('[data-id="LastName"]').value,
             Phone: this.template.querySelector('[data-id="Phone"]').value,
             Mailing_Postal_Code__c: this.template.querySelector('[data-id="PostalCode"]').value,
-            Monthly_Income__c: this.template.querySelector('[data-id="Income"]').value,
+            Income__c: this.template.querySelector('[data-id="Income"]').value,
             Support_Option__c: this.template.querySelector('[data-id="Option"]').value
         };
 

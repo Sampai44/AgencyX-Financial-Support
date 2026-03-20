@@ -3,7 +3,7 @@ public without sharing class GrantApplicationController {
     public static String submitApplication(Contact con) {
         try {
             // 1. Check Eligibility FIRST
-            if (con.Monthly_Income__c >= 2000) {
+            if (con.Income__c >= 2000) {
                 return 'Ineligible: Income must be less than SGD 2000';
             }
 
