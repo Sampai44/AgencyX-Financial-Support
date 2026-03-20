@@ -25,18 +25,23 @@ public without sharing class GrantApplicationController {
         }
     }
 
-    private static void createDisbursements(Id contactId, String option) {
-        List<Grant_Disbursed__c> recordsToInsert = new List<Grant_Disbursed__c>();
-        Integer months = 0;
-        Decimal amount = 0;
+    private static void createDisbursements(Id contactId, String optionName) {
+    // 1. Look up the rules from the Metadata table
+    // It finds the row where the Label matches the user's choice
+    Grant_Option__mdt rules = [
+        SELECT Amount__c, Months__c 
+        FROM Grant_Option__mdt 
+        WHERE Label = :optionName 
+        LIMIT 1
+    ];
 
-        // Configuration 
-        if (option == 'Option 1') { months = 3; amount = 500; }
-        else if (option == 'Option 2') { months = 6; amount = 300; }
-        else if (option == 'Option 3') { months = 12; amount = 200; }
+    // 2. Use the values from the Metadata record
+    Decimal amount = rules.Amount__c;
+    Integer months = (Integer)rules.Months__c;
 
-        // Logic for "1st day of next month"
-        Date nextDisburseDate = Date.today().addMonths(1).toStartOfMonth();
+    // 3. Create the records as usual
+    List<Grant_Disbursed__c> recordsToInsert = new List<Grant_Disbursed__c>();
+    Date nextDisburseDate = Date.today().addMonths(1).toStartOfMonth();
 
         for (Integer i = 0; i < months; i++) {
             recordsToInsert.add(new Grant_Disbursed__c(
@@ -46,9 +51,8 @@ public without sharing class GrantApplicationController {
                 Disbursed_Date__c = nextDisburseDate.addMonths(i)
             ));
         }
-
-        if (!recordsToInsert.isEmpty()) {
-            insert recordsToInsert;
-        }
+        insert recordsToInsert;
     }
+
 }
+
