@@ -10,7 +10,7 @@ public without sharing class GrantApplicationController {
             // 2. Handle Contact (Upsert based on Phone)
             List<Contact> existing = [SELECT Id FROM Contact WHERE Phone = :con.Phone LIMIT 1];
             if (!existing.isEmpty()) {
-                con.Id = existing.Id;
+                con.Id = existing[0].Id;
                 update con;
             } else {
                 insert con;
