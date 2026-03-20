@@ -28,22 +28,20 @@ export default class GrantAppForm extends LightningElement {
 
         submitApplication({ con: contactRecord })
             .then((result) => {
-                if (result.includes('Ineligible')) {
-                    // Show Warning Toast
+                if (result.includes('Invalid') || result.includes('Ineligible')) {
                     this.dispatchEvent(new ShowToastEvent({
-                        title: 'Not Eligible',
+                        title: 'Error',
                         message: result,
-                        variant: 'warning'
+                        variant: 'error'
                     }));
                 } else {
-                    // Show Success Toast
                     this.dispatchEvent(new ShowToastEvent({
                         title: 'Success',
-                        message: 'Application Submitted and Records Created!',
+                        message: result,
                         variant: 'success'
-                    })
-                );
+                    }));
+                }
             }
-        })
+        )
     }
 }
