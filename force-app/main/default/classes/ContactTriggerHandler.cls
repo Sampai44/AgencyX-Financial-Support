@@ -26,49 +26,71 @@ public without sharing class ContactTriggerHandler {
         }
     }
 
-    // Creates the disbursement records in bulk to support US4 CSV uploads
-    private static void generateRecords(List<Contact> contacts) {
-        // BULKIFICATION: Query all Custom Metadata rules once to avoid hitting limits
-        Map<String, Grant_Option__mdt> metaMap = new Map<String, Grant_Option__mdt>();
-        for (Grant_Option__mdt m : [SELECT Label, Amount__c, Months__c FROM Grant_Option__mdt]) {
-            metaMap.put(m.Label, m);
+private static void generateRecords(List<Contact> contacts) {
+    Map<String, Grant_Option__mdt> metaMap = new Map<String, Grant_Option__mdt>();
+    for (Grant_Option__mdt m : [SELECT Label, Amount__c, Months__c FROM Grant_Option__mdt]) {
+        metaMap.put(m.Label, m);
+    }
+
+    Set<Id> contactIds = new Map<Id, Contact>(contacts).keySet();
+
+    // 1. Get Disbursed History (How many months and how much money already paid)
+    Map<Id, Decimal> receivedAmountMap = new Map<Id, Decimal>();
+    Map<Id, Integer> monthsPaidMap = new Map<Id, Integer>();
+    
+    for (Grant_Disbursed__c gd : [SELECT Grant_Applicant__c, Amount_to_be_disbursed__c 
+                                  FROM Grant_Disbursed__c 
+                                  WHERE Grant_Applicant__c IN :contactIds AND Disbursed_Date__c <= TODAY]) {
+        Decimal currentAmt = receivedAmountMap.containsKey(gd.Grant_Applicant__c) ? receivedAmountMap.get(gd.Grant_Applicant__c) : 0;
+        receivedAmountMap.put(gd.Grant_Applicant__c, currentAmt + gd.Amount_to_be_disbursed__c);
+        
+        Integer currentMonths = monthsPaidMap.containsKey(gd.Grant_Applicant__c) ? monthsPaidMap.get(gd.Grant_Applicant__c) : 0;
+        monthsPaidMap.put(gd.Grant_Applicant__c, currentMonths + 1);
+    }
+
+    // 2. Clear FUTURE records only
+    delete [SELECT Id FROM Grant_Disbursed__c WHERE Grant_Applicant__c IN :contactIds AND Disbursed_Date__c > TODAY];
+
+    List<Grant_Disbursed__c> toInsert = new List<Grant_Disbursed__c>();
+
+    for (Contact con : contacts) {
+        Grant_Option__mdt rules = metaMap.get(con.Support_Option__c);
+        if (rules == null) continue;
+
+        Decimal amtReceived = receivedAmountMap.containsKey(con.Id) ? receivedAmountMap.get(con.Id) : 0;
+        Integer monthsPaid = monthsPaidMap.containsKey(con.Id) ? monthsPaidMap.get(con.Id) : 0;
+        
+        Decimal newOptionTotal = rules.Amount__c * rules.Months__c;
+        Integer totalMonthsForNewOption = (Integer)rules.Months__c;
+
+        // US3: Blocker Logic
+        if (amtReceived > newOptionTotal) {
+            con.addError('Cannot change option: Total received (SGD ' + amtReceived + ') exceeds new option total (SGD ' + newOptionTotal + ').');
+            continue;
         }
 
-        List<Grant_Disbursed__c> toInsert = new List<Grant_Disbursed__c>();
-        Set<Id> contactIds = new Map<Id, Contact>(contacts).keySet();
+        // US3: Redistribution Math
+        Decimal remainingFunds = newOptionTotal - amtReceived;
+        Integer remainingMonths = totalMonthsForNewOption - monthsPaid;
 
-        // US3: Clear any existing future disbursement records for these contacts before creating new ones
-        // Using 'IN :contactIds' ensures this is bulk-safe for up to 200 records
-        delete [SELECT Id FROM Grant_Disbursed__c 
-                WHERE Grant_Applicant__c IN :contactIds 
-                AND Disbursed_Date__c > TODAY];
-
-        for (Contact con : contacts) {
-            // Retrieve the specific rules from our metadata map
-            Grant_Option__mdt rules = metaMap.get(con.Support_Option__c);
-            if (rules == null) continue; 
-
-            Integer months = (Integer)rules.Months__c;
-            Decimal amount = rules.Amount__c;
-            
-            // US2: First disbursement starts on the 1st day of the next month
+        if (remainingMonths > 0) {
+            Decimal monthlyAmt = remainingFunds / remainingMonths;
             Date nextDate = Date.today().addMonths(1).toStartOfMonth();
 
-            // Loop to build the schedule for this specific contact
-            for (Integer i = 0; i < months; i++) {
+            for (Integer i = 0; i < remainingMonths; i++) {
                 toInsert.add(new Grant_Disbursed__c(
                     Grant_Applicant__c = con.Id,
-                    Amount_to_be_disbursed__c = amount,
+                    Amount_to_be_disbursed__c = monthlyAmt,
                     Grant_is_disbursed__c = true,
                     Disbursed_Date__c = nextDate.addMonths(i)
                 ));
             }
         }
-
-        // System.debug('DEBUG: Number of records to insert: ' + toInsert.size());
-        // BULKIFICATION: Perform one single DML insert for all records across all contacts
-        if (!toInsert.isEmpty()) {
-            insert toInsert;
-        }
     }
+
+    // System.debug('DEBUG: Number of records to insert: ' + toInsert.size());
+    if (!toInsert.isEmpty()) {
+        insert toInsert;
+    }
+  }
 }

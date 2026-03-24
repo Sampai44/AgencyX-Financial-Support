@@ -51,7 +51,8 @@ export default class GrantAppForm extends LightningElement {
     submitApplication({ con: contactRecord })
         .then((result) => {
             // Check if result contains 'Success'
-            if (result.includes('Success')) {
+            // If the Trigger blocks the save via addError, Apex will throw an exception and skip this block
+            if (result && result.includes('Success')) {
                 this.dispatchEvent(new ShowToastEvent({
                     title: 'Success',
                     message: result,
@@ -60,19 +61,24 @@ export default class GrantAppForm extends LightningElement {
             } else {
                 this.dispatchEvent(new ShowToastEvent({
                     title: 'Error',
-                    message: result, // This will catch the "Invalid" or "Ineligible" messages
+                    message: result, 
                     variant: 'error'
                 }));
             }
         })
         .catch((error) => {
-            // This catches system crashes (DML exceptions, etc.)
+            // This catches Trigger addError() and other DML exceptions
+            // We pull the specific message (e.g., "Total received exceeds new option") from error.body.message
+            let errorMessage = 'An unexpected system error occurred.';
+            if (error.body && error.body.message) {
+                errorMessage = error.body.message;
+            }
+            
             this.dispatchEvent(new ShowToastEvent({
-                title: 'System Error',
-                message: error.body.message,
+                title: 'Application Error',
+                message: errorMessage,
                 variant: 'error'
             }));
         });
     }
 }
-
