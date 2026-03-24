@@ -1,13 +1,20 @@
-import { LightningElement } from 'lwc';
+import { LightningElement, wire } from 'lwc';
 import submitApplication from '@salesforce/apex/GrantApplicationController.submitApplication';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import getSupportOptions from '@salesforce/apex/GrantApplicationController.getSupportOptions'; 
 
 export default class GrantAppForm extends LightningElement {
-    options = [
-        { label: 'Option 1: $500 (3 months)', value: 'Option 1' },
-        { label: 'Option 2: $300 (6 months)', value: 'Option 2' },
-        { label: 'Option 3: $200 (12 months)', value: 'Option 3' },
-    ];
+   options = []; // Now empty by default
+
+    // Dynamically pull from Salesforce Metadata
+    @wire(getSupportOptions)
+    wiredOptions({ error, data }) {
+        if (data) {
+            this.options = data;
+        } else if (error) {
+            console.error('Error fetching options:', error);
+        }
+    }
 
    
     handleSubmit() {
