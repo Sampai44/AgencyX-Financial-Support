@@ -19,22 +19,27 @@ public without sharing class GrantApplicationController {
     }
 
     @AuraEnabled
-    public static String submitApplication(Contact con) {
-        try {
-            // The Trigger now handles the Income check and Disbursement creation!
-            // We just need to Upsert the Contact here.
-            
-            List<Contact> existing = [SELECT Id FROM Contact WHERE Phone = :con.Phone LIMIT 1];
-            if (!existing.isEmpty()) {
-                con.Id = existing[0].Id;
-                update con;
-                return 'Existing Contact Updated Successfully';
-            } else {
-                insert con;
-                return 'New Application Created Successfully';
-            }
-        } catch (Exception e) {
-            throw new AuraHandledException(e.getMessage());
+public static String submitApplication(Contact con) {
+    try {
+        List<Contact> existing = [SELECT Id, Support_Option__c, Income__c FROM Contact WHERE Phone = :con.Phone LIMIT 1];
+        
+        if (!existing.isEmpty()) {
+            // MERGE: Update the existing record's fields with the new ones
+            Contact toUpdate = existing[0];
+            toUpdate.FirstName = con.FirstName;
+            toUpdate.LastName = con.LastName;
+            toUpdate.Mailing_Postal_Code__c = con.Mailing_Postal_Code__c;
+            toUpdate.Income__c = con.Income__c;
+            toUpdate.Support_Option__c = con.Support_Option__c; 
+
+            update toUpdate; 
+            return 'Success: Existing Application Updated';
+        } else {
+            insert con;
+            return 'Success: New Application Created';
         }
+    } catch (Exception e) {
+        throw new AuraHandledException(e.getMessage());
     }
+  }
 }
