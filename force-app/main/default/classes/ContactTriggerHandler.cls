@@ -65,6 +65,7 @@ public without sharing class ContactTriggerHandler {
             }
         }
 
+        // System.debug('DEBUG: Number of records to insert: ' + toInsert.size());
         // BULKIFICATION: Perform one single DML insert for all records across all contacts
         if (!toInsert.isEmpty()) {
             insert toInsert;
